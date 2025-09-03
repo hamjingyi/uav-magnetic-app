@@ -499,8 +499,8 @@ else:
       # # ------------------save result testing----------------------
       # import pickle
       # save_path = os.path.join(suscep_dir, "inversion_results.pkl")
-      with open(inver, "wb") as f:
-          pickle.dump({"mrec": mrec, "mesh": mesh, "actv": actv}, f)
+      # with open(inver, "wb") as f:
+      #     pickle.dump({"mrec": mrec, "mesh": mesh, "actv": actv}, f)
 
       # with open(os.path.join(suscep_dir, "inversion_results.pkl"), "rb") as f:
       #     results = pickle.load(f)
