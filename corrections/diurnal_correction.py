@@ -378,9 +378,9 @@ def per_day_GRU_transfer(df_dalat_filtered, df_local, run_GRU_trend_transfer, te
     # Store per-day results
     dfs_interp = []
 
-    for day in sorted(df_local['Date'].unique()):
+    for i, day in enumerate(sorted(df_local['Date'].unique()), start=1):
         logging.info("Apply GRU trend transfer day by day, aligning each day individually.")
-        logging.info(f"Running {day} trend tranfer...")
+        logging.info(f"Day {i}: Running {day} trend transfer...")
         df_local_day = df_local[df_local['Date'] == day].copy()
         df_dalat_day = df_dalat_filtered[df_dalat_filtered['Date'] == day].copy()
 
