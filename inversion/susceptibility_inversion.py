@@ -331,6 +331,8 @@ def overlay_terrain_chi(
     # -----------------------------
     # 3) Plotting
     # -----------------------------
+    plot_susceptibility_slices(V, xc, yc, zc, z_index=10, y_index=5, output_dir=html_out)
+
     fig = make_subplots(
         rows=1, cols=2,
         specs=[[{'type': 'scene'}, {'type': 'scene'}]],
