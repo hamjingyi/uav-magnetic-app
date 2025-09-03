@@ -93,6 +93,10 @@ if xyz_path:
 photo_path = upload_file("DSM TIF file here:")
 if photo_path:
     st.write(f"Uploaded: `{photo_path.name}`")
+
+inver = upload_file("inv file here:")
+if inver:
+    st.write(f"Uploaded: `{inver.name}`")
 # --------------------------------------------------------------------
 
 required_files = {
@@ -498,8 +502,8 @@ else:
 
       # # ------------------save result testing----------------------
       # import pickle
-      save_path = os.path.join(suscep_dir, "inversion_results.pkl")
-      with open(save_path, "wb") as f:
+      # save_path = os.path.join(suscep_dir, "inversion_results.pkl")
+      with open(inver, "wb") as f:
           pickle.dump({"mrec": mrec, "mesh": mesh, "actv": actv}, f)
 
       # with open(os.path.join(suscep_dir, "inversion_results.pkl"), "rb") as f:
