@@ -537,7 +537,7 @@ def overlay_terrain_chi(
     #                                 showscale=True, colorbar=dict(title="χ (SI)")),
     #                   row=1, col=1)
     valid_idx = ~np.isnan(VAL_left)
-    if np.count_nonzero(valid_idx) >= 10:  # enough points for surface
+    if np.count_nonzero(valid_idx) >= 50:  # require enough points
         fig.add_trace(go.Isosurface(
             x=X, y=Y, z=Z-50, value=VAL_left,
             isomin=ISO_LEVEL_LEFT, isomax=iso_max_left,
@@ -553,7 +553,8 @@ def overlay_terrain_chi(
         fig.add_trace(go.Scatter3d(
             x=X[valid_idx], y=Y[valid_idx], z=Z[valid_idx]-50,
             mode="markers",
-            marker=dict(size=2, color=VAL_left[valid_idx], colorscale=ISO_COLORS_LEFT, opacity=0.8),
+            marker=dict(size=2, color=VAL_left[valid_idx],
+                        colorscale=ISO_COLORS_LEFT, opacity=0.8),
             name=f"χ ≥ {ISO_LEVEL_LEFT}"
         ), row=1, col=1)
 
