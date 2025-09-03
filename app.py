@@ -497,17 +497,17 @@ else:
 
 
       # # ------------------save result testing----------------------
-      import pickle
-      save_path = os.path.join(suscep_dir, "inversion_results.pkl")
-      with open(save_path, "wb") as f:
-          pickle.dump({"mrec": mrec, "mesh": mesh, "actv": actv}, f)
+      # import pickle
+      # save_path = os.path.join(suscep_dir, "inversion_results.pkl")
+      # with open(save_path, "wb") as f:
+      #     pickle.dump({"mrec": mrec, "mesh": mesh, "actv": actv}, f)
 
-      with open(os.path.join(suscep_dir, "inversion_results.pkl"), "rb") as f:
-          results = pickle.load(f)
+      # with open(os.path.join(suscep_dir, "inversion_results.pkl"), "rb") as f:
+      #     results = pickle.load(f)
 
-      mrec = results["mrec"]
-      mesh = results["mesh"]
-      actv = results["actv"]
+      # mrec = results["mrec"]
+      # mesh = results["mesh"]
+      # actv = results["actv"]
 
       # ----------------- Step 9: Terrain Overlay -----------------
       update_progress(8)
@@ -519,12 +519,12 @@ else:
                     photo_path=photo_path,
                     html_out=suscep_dir,
                     title="terrain_overlay.html",
-                    mesh=mesh,
-                    actv=actv,
-                    mrec=mrec
-                    # mesh=st.session_state.mesh,
-                    # actv=st.session_state.actv,
-                    # mrec=st.session_state.mrec
+                    # mesh=mesh,
+                    # actv=actv,
+                    # mrec=mrec
+                    mesh=st.session_state.mesh,
+                    actv=st.session_state.actv,
+                    mrec=st.session_state.mrec
                 )
               st.session_state.terrain_overlay_done = True
 
