@@ -463,7 +463,7 @@ else:
       df_microleveling.to_csv(micro_csv, index=False)
       show_logs()
       st.subheader("Final Processed Magnetic Values")
-      st.dataframe(df_microleveling.head(20), width='stretch')
+      st.dataframe(df_microleveling, width='stretch')
 
       plot_TMI(
           df=df_microleveling,
