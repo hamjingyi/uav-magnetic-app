@@ -165,8 +165,8 @@ def apply_directional_correction(df_all: pd.DataFrame,
           plt.savefig(fig_path, dpi=300, bbox_inches='tight')
 
         plt.show()
-        logging.info("Before correction mean:", df_all['diurnal_correction_magnetic'].mean())
-        logging.info("After correction mean:", df_all['direction_corrected_huber'].mean())
+        logging.info(f"Before correction mean: {df_all['diurnal_correction_magnetic'].mean()}")
+        logging.info(f"After correction mean: {df_all['direction_corrected_huber'].mean()}")
 
     return {
         "df_corrected": df_all,
