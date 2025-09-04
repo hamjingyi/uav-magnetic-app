@@ -163,16 +163,27 @@ def run_3d_susceptibility_inversion(
     logging.info(f"[outputs] {out_dir} | sensitivities stored in: {store_mode}")
     return mrec, mesh, actv
 
-import os
-import logging
-import numpy as np
-import pandas as pd
-from scipy.spatial import Delaunay
-from scipy.interpolate import LinearNDInterpolator
-from PIL import Image
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
-
+def styled_scene():
+    """Return a styled scene dict with white grid lines and light background."""
+    return dict(
+        xaxis_title="Easting",
+        yaxis_title="Northing",
+        zaxis_title="Elevation",
+        aspectmode="data",
+        xaxis=dict(
+            showgrid=True, gridcolor="white", gridwidth=2,
+            showbackground=True, backgroundcolor="rgba(229,236,246,1)"
+        ),
+        yaxis=dict(
+            showgrid=True, gridcolor="white", gridwidth=2,
+            showbackground=True, backgroundcolor="rgba(229,236,246,1)"
+        ),
+        zaxis=dict(
+            showgrid=True, gridcolor="white", gridwidth=2,
+            showbackground=True, backgroundcolor="rgba(229,236,246,1)"
+        ),
+    )
+    
 def overlay_terrain_chi(
     xyz_path: str = None,
     photo_path: str = None,
@@ -348,7 +359,7 @@ def overlay_terrain_chi(
             opacity=FULL_ISO_OPACITY,
             colorscale="Viridis",
             caps=dict(x_show=False, y_show=False, z_show=False),
-            showscale=True, colorbar=dict(title="χ (SI)")
+            colorbar=dict(title="χ (SI)", len=0.75, x=0.45)
         ), row=1, col=1)
 
     # Highlight surface
@@ -360,7 +371,7 @@ def overlay_terrain_chi(
             colorscale=ISO_COLORS_LEFT,
             opacity=ISO_OPACITY_LEFT,
             caps=dict(x_show=False, y_show=False, z_show=False),
-            showscale=True, colorbar=dict(title=f"χ ≥ {ISO_LEVEL_LEFT}")
+            colorbar=dict(title="χ (SI)", len=0.75, x=1.0)
         ), row=1, col=2)
 
     # Terrain overlay
@@ -370,12 +381,12 @@ def overlay_terrain_chi(
         fig.add_trace(terrain_right, row=1, col=2)
 
     fig.update_layout(
-        width=1600, height=850,
-        title="Side-by-side Terrain + Susceptibility Overlay",
-        margin=dict(t=60, l=10, r=10, b=10),
-        scene=dict(xaxis_title="Easting", yaxis_title="Northing", zaxis_title="Elevation", aspectmode="data", bgcolor="white"),
-        scene2=dict(xaxis_title="Easting", yaxis_title="Northing", zaxis_title="Elevation", aspectmode="data", bgcolor="white")
+        width=1400, height=650,
+        title="Terrain + Susceptibility Overlay",
+        scene=styled_scene(),
+        scene2=styled_scene()
     )
+    
     cam = dict(eye=dict(x=1.6, y=1.6, z=1.1))
     fig.update_scenes(camera=cam)
     fig.layout.scene2.camera = cam
@@ -388,205 +399,6 @@ def overlay_terrain_chi(
     fig.show()
 
 
-# def overlay_terrain_chi(
-#     xyz_path: str = None,
-#     photo_path: str = None,
-#     photo_path2: str = None,
-#     html_out: str = None,
-#     title: str = "terrain_overlay.html",
-#     mesh=None,
-#     actv=None,
-#     mrec=None,
-#     IMG_MAX: int = 768,
-#     PT_KEEP: float = 1.0,
-#     DSM_BIN: float = 0.0,
-#     MODEL_STRIDE: tuple = (1, 1, 1),
-#     FLIP_V: bool = True,
-#     BORDER_EPS: float = 1e-3,
-#     TERRAIN_OPACITY_LEFT: float = 1.0,
-#     TERRAIN_OPACITY_RIGHT: float = 1.0,
-#     TERRAIN_LIGHT: dict = dict(ambient=0.65, diffuse=0.6, specular=0.05),
-#     ISO_LEVEL_LEFT: float = 0.0035,
-#     ISO_SURFACES_LEFT: int = 1,
-#     ISO_COLORS_LEFT: str = "Hot",
-#     ISO_OPACITY_LEFT: float = 1.0,
-#     FULL_MODE: str = "isosurface",
-#     FULL_ISO_SURFACES: int = 25,
-#     FULL_ISO_OPACITY: float = 0.25,
-#     FULL_PERC_RANGE: tuple = (5.0, 99.0)
-# ):
-#     """
-#     Generate side-by-side Plotly visualization of terrain (DSM + image) 
-#     and 3D magnetic susceptibility. Skips layers that are None.
-#     """
-    
-#     terrain_left = terrain_right = None
-#     X = Y = Z = VAL_clip = VAL_left = np.array([])  # placeholders
-
-#     # -----------------------------
-#     # 1) Terrain DSM + Orthophoto
-#     # -----------------------------
-#     if xyz_path is not None and photo_path is not None:
-#         logging.info("Loading XYZ terrain and orthophoto...")
-#         xyz = np.loadtxt(xyz_path, delimiter=",").astype(np.float32)
-
-#         # Optional DSM thinning
-#         if DSM_BIN > 0:
-#             xmin, ymin = xyz[:,0].min(), xyz[:,1].min()
-#             gx = np.floor((xyz[:,0] - xmin) / DSM_BIN).astype(np.int32)
-#             gy = np.floor((xyz[:,1] - ymin) / DSM_BIN).astype(np.int32)
-#             keys = (gx.astype(np.int64) << 32) | gy.astype(np.int64)
-#             _, keep_idx = np.unique(keys, return_index=True)
-#             xyz = xyz[np.sort(keep_idx)]
-#         elif 0 < PT_KEEP < 1.0:
-#             rng = np.random.default_rng(42)
-#             idx = rng.choice(xyz.shape[0], size=int(xyz.shape[0]*PT_KEEP), replace=False)
-#             xyz = xyz[np.sort(idx)]
-
-#         x, y, z = xyz[:,0], xyz[:,1], xyz[:,2]
-#         tri = Delaunay(np.c_[x, y])
-
-#         # Load orthophoto
-#         im = Image.open(photo_path).convert("RGB")
-#         w, h = im.size
-#         scale = min(IMG_MAX / max(w, h), 1.0)
-#         if scale < 1.0:
-#             im = im.resize((int(w*scale), int(h*scale)), Image.LANCZOS)
-#         ARR = np.asarray(im).astype(np.uint8)
-#         H, W, _ = ARR.shape
-
-#         # UV mapping
-#         xmin, xmax = x.min(), x.max()
-#         ymin, ymax = y.min(), y.max()
-#         u = (x - xmin) / max(1e-9, (xmax - xmin))
-#         v = (y - ymin) / max(1e-9, (ymax - ymin))
-#         v_img = 1.0 - v if FLIP_V else v
-#         px = np.clip((u * (W-1)).round().astype(np.int32), 0, W-1)
-#         py = np.clip((v_img * (H-1)).round().astype(np.int32), 0, H-1)
-#         vertex_rgb = ARR[py, px]
-
-#         # Trim triangles outside image
-#         uc = (u[tri.simplices.T[0]] + u[tri.simplices.T[1]] + u[tri.simplices.T[2]]) / 3.0
-#         vc = (v_img[tri.simplices.T[0]] + v_img[tri.simplices.T[1]] + v_img[tri.simplices.T[2]]) / 3.0
-#         inside_tri = (uc >= BORDER_EPS) & (uc <= 1.0 - BORDER_EPS) & (vc >= BORDER_EPS) & (vc <= 1.0 - BORDER_EPS)
-#         i2, j2, k2 = tri.simplices.T[0][inside_tri], tri.simplices.T[1][inside_tri], tri.simplices.T[2][inside_tri]
-
-#         terrain_left = go.Mesh3d(
-#             x=x, y=y, z=z, i=i2, j=j2, k=k2,
-#             vertexcolor=vertex_rgb,
-#             opacity=TERRAIN_OPACITY_LEFT,
-#             lighting=TERRAIN_LIGHT,
-#             flatshading=False,
-#             showscale=False,
-#             name="DSM + Image"
-#         )
-#         terrain_right = terrain_left.update(opacity=TERRAIN_OPACITY_RIGHT)
-
-#     # -----------------------------
-#     # 2) Magnetic Susceptibility
-#     # -----------------------------
-#     vmin_full = vmax_full = iso_max_left = ISO_LEVEL_LEFT
-#     if mesh is not None and actv is not None and mrec is not None:
-#         logging.info("Preparing χ model overlay...")
-#         chi_full = np.zeros(mesh.nC, dtype=np.float32)
-#         chi_full[actv] = mrec.astype(np.float32)
-
-#         nx, ny, nz = mesh.shape_cells
-#         CHI = chi_full.reshape((nx, ny, nz), order="F")
-#         ACT = actv.reshape((nx, ny, nz), order="F")
-
-#         ix = np.where(ACT.any(axis=(1,2)))[0]; sx = slice(ix.min(), ix.max()+1, MODEL_STRIDE[0])
-#         iy = np.where(ACT.any(axis=(0,2)))[0]; sy = slice(iy.min(), iy.max()+1, MODEL_STRIDE[1])
-#         iz = np.where(ACT.any(axis=(0,1)))[0]; sz = slice(iz.min(), iz.max()+1, MODEL_STRIDE[2])
-#         V = CHI[sx, sy, sz].copy().astype(np.float32)
-
-#         x0, y0, z0 = mesh.x0
-#         hx, hy, hz = mesh.h
-#         xe, ye, ze = x0 + np.r_[0.0, np.cumsum(hx)], y0 + np.r_[0.0, np.cumsum(hy)], z0 + np.r_[0.0, np.cumsum(hz)]
-#         xc = 0.5*(xe[:-1] + xe[1:])[sx].astype(np.float32)
-#         yc = 0.5*(ye[:-1] + ye[1:])[sy].astype(np.float32)
-#         zc = 0.5*(ze[:-1] + ze[1:])[sz].astype(np.float32)
-#         Xd, Yd, Zd = np.meshgrid(xc, yc, zc, indexing="ij")
-#         X, Y, Z = Xd.ravel(order="F"), Yd.ravel(order="F"), Zd.ravel(order="F")
-#         VAL = V.ravel(order="F")
-
-#         # ---- Save full model ----
-#         df_all = pd.DataFrame({
-#             "Easting": X,
-#             "Northing": Y,
-#             "Elevation": Z,
-#             "Susceptibility": VAL
-#         })
-#         df_all.to_csv(f"{html_out}/susceptibility_model_full.csv", index=False)
-
-
-#         # Clip below DSM if terrain exists
-#         if xyz_path is not None:
-#             surf = LinearNDInterpolator(np.c_[x, y], z, fill_value=np.nan)
-#             Zsurf = surf(np.c_[X, Y])
-#             keep = np.isfinite(Zsurf) & (Z < (Zsurf - 0.5)) & (tri.find_simplex(np.c_[X, Y]) >= 0)
-#         else:
-#             keep = np.ones_like(VAL, dtype=bool)
-
-#         VAL_clip = np.where(keep, VAL, np.nan)
-#         VAL_left = np.where(VAL_clip >= ISO_LEVEL_LEFT, VAL_clip, np.nan)
-
-#         vals_ok = VAL_clip[np.isfinite(VAL_clip)]
-#         if vals_ok.size:
-#             vmin_full = float(np.percentile(vals_ok, FULL_PERC_RANGE[0]))
-#             vmax_full = float(np.percentile(vals_ok, FULL_PERC_RANGE[1]))
-#         iso_max_left = float(np.nanmax(V)) if np.isfinite(V).any() else ISO_LEVEL_LEFT*2
-
-#         plot_susceptibility_slices(V, xc, yc, zc, z_index=10, y_index=5, output_dir=html_out)
-
-#     # -----------------------------
-#     # 3) Plotting
-#     # -----------------------------
-#     fig = make_subplots(
-#         rows=1, cols=2,
-#         specs=[[{'type': 'scene'}, {'type': 'scene'}]],
-#         subplot_titles=("Terrain + Full Susceptibility", f"Terrain + χ ≥ {ISO_LEVEL_LEFT}", )
-#     )
-
-#     if terrain_right is not None:
-#         fig.add_trace(terrain_right, row=1, col=2)
-#     if VAL_clip.size:
-#         fig.add_trace(go.Isosurface(x=X, y=Y, z=Z-50, value=VAL_clip,
-#                                     isomin=vmin_full, isomax=vmax_full,
-#                                     surface_count=FULL_ISO_SURFACES, opacity=FULL_ISO_OPACITY,
-#                                     colorscale="Viridis",
-#                                     caps=dict(x_show=False, y_show=False, z_show=False),
-#                                     showscale=True, colorbar=dict(title="χ (SI)")),
-#                       row=1, col=1)
-
-#     if terrain_left is not None:
-#         fig.add_trace(terrain_left, row=1, col=1)
-#     if VAL_left.size:
-#         fig.add_trace(go.Isosurface(x=X, y=Y, z=Z-50, value=VAL_left,
-#                                     isomin=ISO_LEVEL_LEFT, isomax=iso_max_left,
-#                                     surface_count=ISO_SURFACES_LEFT, colorscale=ISO_COLORS_LEFT,
-#                                     opacity=ISO_OPACITY_LEFT,
-#                                     caps=dict(x_show=False, y_show=False, z_show=False),
-#                                     showscale=True, colorbar=dict(title="χ (SI)")),
-#                       row=1, col=2)
-
-#     fig.update_layout(
-#         width=1600, height=850,
-#         title="Side-by-side Terrain + Susceptibility Overlay",
-#         margin=dict(t=60, l=10, r=10, b=10),
-#         scene=dict(xaxis_title="Easting", yaxis_title="Northing", zaxis_title="Elevation", aspectmode="data", bgcolor="white"),
-#         scene2=dict(xaxis_title="Easting", yaxis_title="Northing", zaxis_title="Elevation", aspectmode="data", bgcolor="white")
-#     )
-#     cam = dict(eye=dict(x=1.6, y=1.6, z=1.1))
-#     fig.update_scenes(camera=cam)
-#     fig.layout.scene2.camera = cam
-
-#     if html_out is not None:
-#         os.makedirs(html_out, exist_ok=True)
-#         fig.write_html(os.path.join(html_out, title))
-#         logging.info(f"Saved HTML: {html_out}/{title}")
-
-#     fig.show()
 
 def plot_susceptibility_slices(CHI_crop, xc, yc, zc, 
                                 z_index=10, y_index=5, 
