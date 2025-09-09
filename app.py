@@ -96,8 +96,8 @@ photo_path=None
 required_files = {
     "Magnetic CSV": filename,
     "Base Station CSV": local_csv,
-    "DEM XYZ": xyz_path,
-    "DSM TIF": photo_path
+    # "DEM XYZ": xyz_path,
+    # "DSM TIF": photo_path
 }
 
 missing_files = [name for name, f in required_files.items() if f is None]
