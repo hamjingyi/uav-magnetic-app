@@ -381,6 +381,7 @@ def per_day_GRU_transfer(df_dalat_filtered, df_local, run_GRU_trend_transfer, te
     for i, day in enumerate(sorted(df_local['Date'].unique()), start=1):
         logging.info("Apply GRU trend transfer day by day, aligning each day individually.")
         logging.info(f"Day {i}: Running {day} trend transfer...")
+        
         df_local_day = df_local[df_local['Date'] == day].copy()
         df_dalat_day = df_dalat_filtered[df_dalat_filtered['Date'] == day].copy()
 
@@ -498,79 +499,5 @@ def partial_detrend(df, value_col, time_col, chosen_date, start_time, end_time,
         plt.show()
 
     return df_out
-
-    
-
-# def partial_detrend(df, value_col, time_col, chosen_date, start_time, end_time, tick_interval=300, plot=True, temp_dir: str = None):
-   
-#     df_out = df.copy()
-
-#     y_full = df_out[value_col].ffill().astype(float).values
-#     x_full = np.arange(len(y_full))
-
-#     df_out['Date'] = df_out['Date'].dt.date
-#     df_out['Time_obj'] = pd.to_datetime(df_out[time_col], format='%H:%M:%S')
-
-#     start_t = pd.to_datetime(start_time, format='%H:%M:%S').time()
-#     end_t = pd.to_datetime(end_time, format='%H:%M:%S').time()
-
-#     mask = (
-#         (df_out['Date'] == chosen_date) &
-#         (df_out['Time_obj'].dt.time.between(start_t, end_t))
-#     )
-
-#     if not mask.any():
-#         raise ValueError(f"No data found in specified time window, with {chosen_date}, {start_t}-{end_t}")
-
-#     start_idx = mask[mask].index.min()
-#     end_idx = mask[mask].index.max()
-
-#     y_partial = y_full.copy()
-#     x_segment = np.arange(start_idx, end_idx+1)
-#     segment = y_full[start_idx:end_idx+1]
-#     detrended_segment = detrend(segment, type='linear')
-#     y_partial[start_idx:end_idx+1] = detrended_segment
-
-#     df_out['partial_detrended'] = y_partial
-
-#     if plot:
-#         time_str = df_out[time_col].astype(str)
-#         tick_positions = range(0, len(time_str), tick_interval)
-
-#         plt.figure(figsize=(12, 6))
-#         plt.plot(time_str, y_full, label='Original Diurnally Corrected', alpha=0.5)
-#         plt.plot(time_str, y_partial, label='Partially Detrended', linewidth=2)
-
-#         # Plot trend line before detrending
-#         coeffs_before = np.polyfit(x_segment, segment, 1)
-#         trend_before = np.polyval(coeffs_before, x_segment)
-#         plt.plot(time_str.iloc[start_idx:end_idx+1], trend_before,
-#                  'r--', label='Trend Before Detrend')
-
-#         # Plot trend line after detrending
-#         coeffs_after = np.polyfit(x_segment, detrended_segment, 1)
-#         trend_after = np.polyval(coeffs_after, x_segment)
-#         plt.plot(time_str.iloc[start_idx:end_idx+1], trend_after,
-#                  'g--', label='Trend After Detrend')
-
-#         plt.axvline(time_str.iloc[start_idx], color='red', linestyle=':', label='Detrend Start')
-#         plt.axvline(time_str.iloc[end_idx], color='green', linestyle=':', label='Detrend End')
-
-#         plt.xlabel('Time (hh:mm:ss)')
-#         plt.ylabel('Total Field Anomaly (nT)')
-#         plt.title(f'Partial Detrending of Magnetic Data ({start_time} – {end_time})')
-#         plt.xticks(tick_positions, time_str.iloc[tick_positions], rotation=45)
-#         plt.legend()
-#         plt.tight_layout()
-
-#         if temp_dir is not None:
-#           os.makedirs(temp_dir, exist_ok=True)
-#           save_path = os.path.join(temp_dir, "solar_storm_partial_detrend_plot.png")
-#           plt.savefig(save_path, dpi=300)
-#           logging.info(f"Partial detrend plot saved to {save_path}")
-
-#         plt.show()
-
-#     return df_out
 
 

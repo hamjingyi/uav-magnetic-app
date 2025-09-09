@@ -12,7 +12,7 @@ import datetime
 from utils.msia_logger import setup_logger
 from utils.file_helpers import upload_file, clean_output_folder
 from data_preprocessing.preprocess_mag_data import resample_magnetic_data
-from data_preprocessing.preprocess_base_station_obs import read_local_csv, preprocess_and_align
+from data_preprocessing.preprocess_base_station_obs import read_local_csv, preprocess_and_align, interpolate_or_trend_transfer
 from reference_data.download_dalat_reference import download_dalat_data_fast, process_dalat_data
 from corrections.diurnal_correction import run_GRU_trend_transfer, per_day_GRU_transfer, apply_diurnal_correction, partial_detrend
 from corrections.directional_correction import apply_directional_correction
@@ -34,17 +34,11 @@ st.title("UAV Magnetic Data Processing and Optimized Visualization for GIS Integ
 st.markdown("---")
 
 # ----------------- Logger -------------------
-log_stream = setup_logger()
-log_stream.truncate(0)
-log_stream.seek(0)
-log_placeholder = st.sidebar.empty()
+if "log_stream" not in st.session_state:
+    st.session_state.log_stream = setup_logger()
 
-def show_logs(tail_lines=20):
-    log_content = log_stream.getvalue().splitlines()
-    unique_key = f"log_text_area_{uuid.uuid4()}"
-    if len(log_content) > tail_lines:
-        log_content = log_content[-tail_lines:]
-    log_placeholder.text_area("Logs", value="\n".join(log_content), key=unique_key, height=600)
+def show_logs():
+    return st.session_state.log_stream.getvalue()
 
 # ----------------- Local env -----------------
 # out = 'Automation Output Testing'
@@ -135,8 +129,8 @@ def reset_downstream():
 if missing_files:
     st.info(f"⚠️ Please upload all required files before running resampling: {', '.join(missing_files)}")
 else:
+  # if st.button("▶ Run Processing"):
     try:
-
       # clear historical files
       if "cleaned_output" not in st.session_state:
           clean_output_folder(out_base_path)
@@ -232,52 +226,64 @@ else:
           df_dalat_filtered = st.session_state.df_dalat_filtered
       show_logs()
 
-      with st.spinner("Running GRU Trend Transfer per day..."):
-          if "df_interp_GRU" not in st.session_state:
-              st.session_state.df_interp_GRU = per_day_GRU_transfer(
-                  df_dalat_filtered, 
-                  df_local, 
-                  run_GRU_trend_transfer,
-                  temp_dir=temp_dir
-              )
-      df_interp_GRU = st.session_state.df_interp_GRU
-      show_logs()
+      with st.spinner("Checking time gaps for local base station data..."):
+        if "df_interp_GRU" not in st.session_state:
+              linear_interpolate_flag, df_interp = interpolate_or_trend_transfer(
+                  df_local, temp_dir)
+              st.session_state.df_interp = df_interp
+              st.session_state.linear_interpolate_flag = linear_interpolate_flag
 
-      plot_files = sorted(glob.glob(f"{temp_dir}/GRU_trend_*.png"))
+        df_interp = st.session_state.df_interp
+        linear_interpolate_flag = st.session_state.linear_interpolate_flag
+        show_logs()
+       
+      logging.info(f'linear_interpolate_flag: {linear_interpolate_flag}')
+      plot_files = []  
+ 
+      if (linear_interpolate_flag == 0):
+        with st.spinner("Running GRU Trend Transfer per day..."):
+            st.info('Trend Transfer from INTERMAGNET')
+            if "df_interp_GRU" not in st.session_state:
+                st.session_state.df_interp_GRU = per_day_GRU_transfer(
+                    df_dalat_filtered, 
+                    df_local, 
+                    run_GRU_trend_transfer,
+                    temp_dir=temp_dir
+                )
+        df_interp_GRU = st.session_state.df_interp_GRU
+        show_logs()
 
-      if not plot_files:
-          st.warning("No GRU trend plots found.")
-      else:
+        plot_files = sorted(glob.glob(f"{temp_dir}/GRU_trend_*.png"))
+        if not plot_files:
+          logging.info("No GRU trend plots found.")
+        else:
           cols = st.columns(len(plot_files))
           
           for col, plot_file in zip(cols, plot_files):
-              col.image(
-                  plot_file,
-                  width='stretch',
-                  caption=os.path.basename(plot_file)
-              )
+            col.image(
+                plot_file,
+                width='stretch',
+                caption=os.path.basename(plot_file)
+            )
+      
+      elif (linear_interpolate_flag == 1):
+        with st.spinner("Running Linear Interpolation..."):
+            st.info('Linear Interpolation on Base Station')
+            if "df_interp_GRU" not in st.session_state:
+                st.session_state.df_interp_GRU = df_interp
+        df_interp_GRU = st.session_state.df_interp_GRU
+        plot_files = st.image(f"{temp_dir}/linear_interpolation_plot.png")
+        show_logs()
 
-      # else:
-      #     selected_plot = st.selectbox(
-      #         "Select a GRU trend plot to view:",
-      #         plot_files,
-      #         index=len(plot_files)-1,  # last one = latest
-      #         format_func=lambda x: os.path.basename(x)  # show only filename
-      #     )
-
-      #     st.image(
-      #         selected_plot,
-      #         width='stretch',
-      #         caption=f"Viewing {os.path.basename(selected_plot)}"
-      #     )
-
+      elif (linear_interpolate_flag == 2):
+        logging.info("Error when parsing time gap in base station data.")
 
       col1, col2 = st.columns(2)
       with col1: 
         st.subheader("Local Base Station Observation")
         st.dataframe(df_local, width='stretch')
       with col2: 
-        st.subheader("Interpolated to 1-sec using GRU Trend Tansfer")
+        st.subheader("Interpolated to 1-sec")
         st.dataframe(df_interp_GRU, width='stretch')
 
       # ----------------- Step 4: Diurnal Correction -----------------
@@ -499,7 +505,7 @@ else:
       # # ------------------save result testing----------------------
       # import pickle
       # save_path = os.path.join(suscep_dir, "inversion_results.pkl")
-      # with open(inver, "wb") as f:
+      # with open(save_path, "wb") as f:
       #     pickle.dump({"mrec": mrec, "mesh": mesh, "actv": actv}, f)
 
       # with open(os.path.join(suscep_dir, "inversion_results.pkl"), "rb") as f:
@@ -549,7 +555,7 @@ else:
                   if os.path.exists(folder):
                       for f in os.listdir(folder):
                           zipf.write(os.path.join(folder, f), f"{subfolder}/{f}")
-              zipf.writestr("logs.txt", log_stream.getvalue())
+              zipf.writestr("logs.txt", st.session_state.log_stream.getvalue())
 
           with open(temp_zip_path, "rb") as f:
               st.download_button(

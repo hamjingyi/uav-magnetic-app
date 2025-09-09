@@ -1,6 +1,7 @@
 import pandas as pd
 from datetime import timedelta
 import logging
+import matplotlib.pyplot as plt
 
 def read_local_csv(csv_path):
     logging.info(f"Reading local base station observation data")
@@ -55,80 +56,53 @@ def preprocess_and_align(
 
     return df_local, df_dalat_filtered
 
-# def preprocess_and_align(
-#     df_local_raw,
-#     df_dalat,
-#     local_time_col="Time",          # Original time column in local CSV
-#     dalat_time_col="Time_Malaysia"
-# ):
-#     logging.info("Preprocessing local base station observation data")
-#     df_local = df_local_raw.copy()
+def interpolate_or_trend_transfer(df_local, temp_dir):
+    """
+    Interpolate local base station data to 1s resolution.
+    - If local data has 1-min resolution → direct linear interpolation.
+    - Else → apply GRU trend transfer with Dalat reference.
+    """
+    linear_interpolate_flag = 2 #initilize
+    local_time_diff = (
+        df_local["Time"]
+        .sort_values()          
+        .diff()                   
+        .dropna()                  
+        .dt.total_seconds()      
+        .mode()[0]             
+    )
 
-#     # Parse local time
-#     df_local["Time"] = pd.to_datetime(
-#         df_local["Date"] + " " + df_local[local_time_col].astype(str),
-#         format="%Y-%m-%d %H:%M", errors="coerce"
-#     )
+    if local_time_diff <= 60:  # ~1-min resolution
+        logging.info("Local base station has <= 60s spacing. Using linear interpolation to 1-sec.")
+        logging.info("Skipping model trend transfer.")
+        
+        df_local = df_local.set_index("Time")
+        full_index = pd.date_range(df_local.index.min(), df_local.index.max(), freq="1S")
+        df_local = df_local.reindex(full_index)
+        df_local["interpolated_magnetic_reading"] = df_local["Magnetic Reading"].interpolate(method="linear")
+        df_local = df_local.reset_index().rename(columns={"index": "Time"})
+  
+        df_local.to_csv(f'{temp_dir}/linear_interpolated_base_station.csv', index=False)
 
-#     # --- Get per-day start and end from local ---
-#     local_day_ranges = (
-#         df_local.groupby(df_local["Time"].dt.normalize())["Time"]
-#         .agg(["min", "max"])
-#         .reset_index()
-#         .rename(columns={"Time": "Date", "min": "Start", "max": "End"})
-#     )
-#     logging.info(f"Local day ranges:\n{local_day_ranges}")
+        linear_interpolate_flag = 1
 
-#     start_time_global = local_day_ranges["Start"].min()
-#     df_local["Seconds"] = (df_local["Time"] - start_time_global).dt.total_seconds()
+        plt.figure(figsize=(10,5))
+        plt.plot(df_local["Time"], df_local["interpolated_magnetic_reading"], label="Linear Interpolated", color="tab:blue")
+        plt.scatter(df_local["Time"], df_local["Magnetic Reading"], s=10, color="tab:red", alpha=0.6, label="Data Points")
+        plt.title("Local Base Station Magnetic Reading (Linear Interpolation)")
+        plt.xlabel("Time")
+        plt.ylabel("Magnetic Reading (nT)")
+        plt.legend()
+        plt.tight_layout()
+        plot_path = f"{temp_dir}/linear_interpolation_plot.png"
+        plt.savefig(plot_path, dpi=150)
+        plt.close()
+        logging.info(f"Saved interpolation plot into {plot_path}")
 
-#     # --- Filter Dalat according to each day's window ---
-#     df_dalat = df_dalat.copy()
-#     df_dalat[dalat_time_col] = pd.to_datetime(df_dalat[dalat_time_col], errors="coerce")
+        df_local = df_local[['Time','interpolated_magnetic_reading']].copy()
 
-#     mask = pd.Series(False, index=df_dalat.index)
-#     for _, row in local_day_ranges.iterrows():
-#         day_mask = (df_dalat[dalat_time_col] >= row["Start"]) & (df_dalat[dalat_time_col] <= row["End"])
-#         mask |= day_mask
+    else:
+      logging.info("Local base station has > 60s spacing. Using Trend Trasnfer interpolation to 1-sec.")
+      linear_interpolate_flag = 0
 
-#     df_dalat_filtered = df_dalat[mask].copy()
-#     df_dalat_filtered["Seconds"] = (
-#         df_dalat_filtered[dalat_time_col] - start_time_global
-#     ).dt.total_seconds()
-
-#     return df_local, df_dalat_filtered
-
-# def preprocess_and_align(
-#     df_local_raw,
-#     df_dalat,
-#     local_time_col="Time",          # Original time column in local CSV
-#     dalat_time_col="Time_Malaysia"
-# ):
-#     logging.info(f"Preprocessing local base station observation data")
-#     df_local = df_local_raw.copy()
-
-#     # Parse local time with date
-#     df_local["Time"] = pd.to_datetime(
-#         df_local['Date'] + " " + df_local[local_time_col].astype(str),
-#         format="%Y-%m-%d %H:%M", errors="coerce"
-#     )
-
-#     minutes = 0
-#     logging.info(f"Extend {minutes} minutes for interpolation model to have more surrounding trend context")
-
-#     start_time = df_local["Time"].min() - timedelta(minutes=minutes)
-#     end_time   = df_local["Time"].max() + timedelta(minutes=minutes)
-#     logging.info(f"Start time: {start_time}, End time: {end_time}")
-
-#     df_local["Seconds"] = (df_local["Time"] - start_time).dt.total_seconds()
-
-#     # Filter Dalat data
-#     df_dalat = df_dalat.copy()
-#     df_dalat[dalat_time_col] = pd.to_datetime(df_dalat[dalat_time_col], errors="coerce")
-#     df_dalat_filtered = df_dalat[
-#         (df_dalat[dalat_time_col] >= start_time) &
-#         (df_dalat[dalat_time_col] <= end_time)
-#     ].copy()
-#     df_dalat_filtered["Seconds"] = (df_dalat_filtered[dalat_time_col] - start_time).dt.total_seconds()
-
-#     return df_local, df_dalat_filtered
+    return linear_interpolate_flag, df_local
