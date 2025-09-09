@@ -30,6 +30,7 @@ def plot_interactive_TMI(
         f"rgb({int(r*255)}, {int(g*255)}, {int(b*255)})"
         for r, g, b, _ in cmap(np.linspace(0, 1, 256))
     ]
+
     df["Date_str"] = df["Date"].dt.date.astype(str)  # only the date
     df["Time_str"] = df["Time"].dt.time.astype(str)  # only the time
 

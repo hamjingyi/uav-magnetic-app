@@ -183,7 +183,7 @@ def styled_scene():
             showbackground=True, backgroundcolor="rgba(229,236,246,1)"
         ),
     )
-    
+
 def overlay_terrain_chi(
     xyz_path: str = None,
     photo_path: str = None,
@@ -386,7 +386,6 @@ def overlay_terrain_chi(
         scene=styled_scene(),
         scene2=styled_scene()
     )
-    
     cam = dict(eye=dict(x=1.6, y=1.6, z=1.1))
     fig.update_scenes(camera=cam)
     fig.layout.scene2.camera = cam
@@ -397,8 +396,6 @@ def overlay_terrain_chi(
         logging.info(f"Saved HTML: {html_out}/{title}")
 
     fig.show()
-
-
 
 def plot_susceptibility_slices(CHI_crop, xc, yc, zc, 
                                 z_index=10, y_index=5, 
