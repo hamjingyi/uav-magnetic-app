@@ -8,6 +8,8 @@ import os
 import tempfile
 import uuid
 import datetime
+import numpy as np
+np.random.seed(42)
 
 from utils.msia_logger import setup_logger
 from utils.file_helpers import upload_file, clean_output_folder
