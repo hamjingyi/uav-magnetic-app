@@ -80,11 +80,11 @@ local_csv = upload_file("(required) BASE STATION CSV file here:")
 if local_csv:
     st.write(f"Uploaded: `{local_csv.name}`")
 
-xyz_path = upload_file("DEM XYZ file here:")
+xyz_path = upload_file("(required) DEM XYZ file here:")
 if xyz_path:
     st.write(f"Uploaded: `{xyz_path.name}`")
 
-photo_path = upload_file("DSM TIF file here:")
+photo_path = upload_file("(required) DSM TIF file here:")
 if photo_path:
     st.write(f"Uploaded: `{photo_path.name}`")
 # --------------------------------------------------------------------
@@ -92,8 +92,8 @@ if photo_path:
 required_files = {
     "Magnetic CSV": filename,
     "Base Station CSV": local_csv,
-    # "DEM XYZ": xyz_path,
-    # "DSM TIF": photo_path
+    "DEM XYZ": xyz_path,
+    "DSM TIF": photo_path
 }
 
 missing_files = [name for name, f in required_files.items() if f is None]
@@ -129,7 +129,6 @@ def reset_downstream():
 if missing_files:
     st.info(f"⚠️ Please upload all required files before running resampling: {', '.join(missing_files)}")
 else:
-  # if st.button("▶ Run Processing"):
     try:
       # clear historical files
       if "cleaned_output" not in st.session_state:
