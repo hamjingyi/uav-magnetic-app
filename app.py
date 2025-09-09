@@ -88,13 +88,15 @@ local_csv = upload_file("(required) BASE STATION CSV file here:")
 if local_csv:
     st.write(f"Uploaded: `{local_csv.name}`")
 
-xyz_path = upload_file("DEM XYZ file here:")
-if xyz_path:
-    st.write(f"Uploaded: `{xyz_path.name}`")
+# xyz_path = upload_file("DEM XYZ file here:")
+# if xyz_path:
+#     st.write(f"Uploaded: `{xyz_path.name}`")
 
-photo_path = upload_file("DSM TIF file here:")
-if photo_path:
-    st.write(f"Uploaded: `{photo_path.name}`")
+# photo_path = upload_file("DSM TIF file here:")
+# if photo_path:
+#     st.write(f"Uploaded: `{photo_path.name}`")
+xyz_path=None
+photo_path=None
 # --------------------------------------------------------------------
 
 required_files = {
