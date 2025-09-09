@@ -232,12 +232,12 @@ else:
                   df_local, temp_dir)
               st.session_state.df_interp = df_interp
               st.session_state.linear_interpolate_flag = linear_interpolate_flag
+              logging.info(f'linear_interpolate_flag: {linear_interpolate_flag}')
 
         df_interp = st.session_state.df_interp
         linear_interpolate_flag = st.session_state.linear_interpolate_flag
         show_logs()
        
-      logging.info(f'linear_interpolate_flag: {linear_interpolate_flag}')
       plot_files = []  
  
       if (linear_interpolate_flag == 0):
